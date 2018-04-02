@@ -1,3 +1,6 @@
+breed [ ants ant ] ; Ants
+patches-own [ pheromone ]
+
 to setup
   clear-all
 
@@ -5,11 +8,62 @@ to setup
   resize-world (-1 * WorldSize / 2) (WorldSize / 2) (-1 * WorldSize / 2) (WorldSize / 2)
   set-patch-size PatchSize
 
+  ask patches [ set pheromone 0 ]
+
+  ifelse AntStartingPosition = "On Feeding Spots" [
+    ; Something, something... feedingspots
+  ] [
+    create-ants (count patches * (CoverageRate / 100)) [
+      set color red
+      set shape "bug"
+      if AntStartingPosition = "Spread Out" [
+        setxy random-xcor random-ycor
+      ]
+    ]
+  ]
+
   reset-ticks
 end
 
 to step
-  ; Step code
+  ; Ant Movement
+  ask ants [
+    ; Sense your surroundings
+    let sensedpheromone [ 0 0 ]
+    set sensedpheromone ant-sense
+    if (item 0 sensedpheromone) = 0 [
+      left RotationAngle
+    ]
+    if (item 0 sensedpheromone) = 2 [
+      right RotationAngle
+    ]
+  ]
+end
+
+; Ants be sensing
+to-report ant-sense
+  let sensedpheromone [ 1 0 ]
+
+  ; Look forward
+  ask patch-ahead SensorOffset [
+    set sensedpheromone list 1 pheromone
+  ]
+
+  ; Look Left
+  ask patch-at-heading-and-distance (-1 * SensorAngle) SensorOffset [
+    if (pheromone > item 1 sensedpheromone) [
+      set sensedpheromone list 0 pheromone
+    ]
+  ]
+
+  ; Look Right
+  ask patch-at-heading-and-distance SensorAngle SensorOffset [
+    if (pheromone > item 1 sensedpheromone) [
+      set sensedpheromone list 2 pheromone
+    ]
+  ]
+
+  report sensedpheromone
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -173,7 +227,7 @@ CHOOSER
 AntStartingPosition
 AntStartingPosition
 "Center" "Spread Out" "On Feeding Spots"
-0
+1
 
 TEXTBOX
 230
@@ -265,7 +319,7 @@ RotationAngle
 RotationAngle
 0
 180
-90.0
+15.0
 1
 1
 °
@@ -355,11 +409,11 @@ SLIDER
 SensorOffset
 SensorOffset
 0
-100
-50.0
+10
+1.0
+0.1
 1
-1
-?
+patches
 HORIZONTAL
 
 INPUTBOX
@@ -549,7 +603,7 @@ SLIDER
 5
 455
 210
-486
+488
 PheromoneDipositRatio
 PheromoneDipositRatio
 0
