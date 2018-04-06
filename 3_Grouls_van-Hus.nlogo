@@ -21,14 +21,30 @@ to setup
     setxy random-xcor random-ycor
   ]
 
-  ifelse AntStartingPosition = "On Feeding Spots" [
-    ; Something, something... feedingspots
-  ] [
-    create-ants (count patches * (CoverageRate / 100)) [
-      set color red
-      set shape "bug"
-      if AntStartingPosition = "Spread Out" [
-        setxy random-xcor random-ycor
+  repeat (count patches) [
+    let pxp 0 ; Patch x preference
+    let pyp 0 ; Patch y preference
+    let pap false ; Patch allow preference
+    ask one-of patches [
+      if random 100 < coverageRate [
+        if AntStartingPosition = "Spread Out" [
+          set pxp pxcor
+          set pyp pycor
+        ]
+        if AntStartingPosition = "On Feeding Spots" [
+          ask one-of foods [
+            set pxp xcor
+            set pyp ycor
+          ]
+        ]
+        set pap true
+      ]
+    ]
+    if pap = true [
+      create-ants 1 [
+        set color red
+        set shape "bug"
+        setxy pxp pyp
       ]
     ]
   ]
@@ -88,8 +104,8 @@ end
 GRAPHICS-WINDOW
 445
 25
-882
-463
+1272
+853
 -1
 -1
 13.0
@@ -102,10 +118,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--16
-16
--16
-16
+-31
+31
+-31
+31
 0
 0
 1
@@ -131,7 +147,7 @@ WorldSize
 WorldSize
 20
 62
-32.0
+62.0
 2
 1
 patches²
@@ -246,7 +262,7 @@ CHOOSER
 AntStartingPosition
 AntStartingPosition
 "Center" "Spread Out" "On Feeding Spots"
-1
+2
 
 TEXTBOX
 230
