@@ -8,7 +8,10 @@ to setup
   resize-world (-1 * WorldSize / 2) (WorldSize / 2) (-1 * WorldSize / 2) (WorldSize / 2)
   set-patch-size PatchSize
 
-  ask patches [ set pheromone 0 ]
+  ask patches [
+    set pheromone random-float 1
+    set pcolor scale-color PheromoneColor pheromone 0 1
+  ]
 
   ifelse AntStartingPosition = "On Feeding Spots" [
     ; Something, something... feedingspots
@@ -37,6 +40,14 @@ to step
     if (item 0 sensedpheromone) = 2 [
       right RotationAngle
     ]
+    forward AntStepSize
+  ]
+
+  ; Pheromone Dissapation
+  ask patches [
+    set pheromone (pheromone * (1 - 1 / PheromoneEvaporationRate))
+    if precision pheromone 4 = 0 [ set pheromone random-float 1 ] ; For fun only, should not be in final
+    set pcolor scale-color PheromoneColor pheromone 0 1
   ]
 end
 
@@ -276,10 +287,10 @@ SLIDER
 143
 AntStepSize
 AntStepSize
-1
-WorldSize
-1.0
-1
+0
+WorldSize / 10
+0.1
+.1
 1
 patch(es)
 HORIZONTAL
@@ -293,7 +304,7 @@ SensorAngle
 SensorAngle
 0
 180
-45.0
+15.0
 1
 1
 °
@@ -319,7 +330,7 @@ RotationAngle
 RotationAngle
 0
 180
-15.0
+45.0
 1
 1
 °
@@ -422,7 +433,7 @@ INPUTBOX
 210
 345
 PheromoneColor
-45.0
+85.0
 1
 0
 Color
