@@ -1,4 +1,5 @@
 breed [ ants ant ] ; Ants
+breed [ foods food ] ; Food
 patches-own [ pheromone ]
 
 to setup
@@ -11,6 +12,13 @@ to setup
   ask patches [
     set pheromone random-float 1
     set pcolor scale-color PheromoneColor pheromone 0 1
+  ]
+
+  create-foods feedingspots [
+    set shape "circle"
+    set color orange
+    set size (feedingspotradius / 2)
+    setxy random-xcor random-ycor
   ]
 
   ifelse AntStartingPosition = "On Feeding Spots" [
@@ -274,7 +282,7 @@ FeedingSpotRadius
 FeedingSpotRadius
 1
 WorldSize
-32.0
+2.0
 1
 1
 patches
