@@ -64,7 +64,7 @@ to step
     if (item 0 sensedpheromone) = 2 [
       right RotationAngle
     ]
-    forward AntStepSize
+    if not ((item 0 sensedpheromone) = 3) [ forward 1 ]
   ]
 
   ; Pheromone Dissapation
@@ -77,24 +77,41 @@ end
 
 ; Ants be sensing
 to-report ant-sense
-  let sensedpheromone [ 1 0 ]
+  let sensedpheromone [ 3 0 ]
 
   ; Look forward
-  ask patch-ahead SensorOffset [
-    set sensedpheromone list 1 pheromone
+  let aifm false ; Ant In Front of Me
+  ask patch-ahead AntStepSize [
+    if (count ants-at pxcor pycor) = 0 or AntsMayShareLocation = true [
+      set aifm true
+    ]
+  ]
+  if aifm [
+    ask patch-ahead SensorOffset [
+      set sensedpheromone list 1 pheromone
+    ]
   ]
 
+  ;; TODO Give Left and right AIFM like behaviour
   ; Look Left
-  ask patch-at-heading-and-distance (-1 * SensorAngle) SensorOffset [
-    if (pheromone > item 1 sensedpheromone) [
-      set sensedpheromone list 0 pheromone
+  ask patch-at-heading-and-distance (-1 * RotationAngle) AntStepSize [
+    if (count ants-at pxcor pycor) = 0 or AntsMayShareLocation = true [
+      ask patch-at-heading-and-distance (-1 * SensorAngle) SensorOffset [
+        if pheromone > (item 1 sensedpheromone) [
+          set sensedpheromone list 0 pheromone
+        ]
+      ]
     ]
   ]
 
   ; Look Right
-  ask patch-at-heading-and-distance SensorAngle SensorOffset [
-    if (pheromone > item 1 sensedpheromone) [
-      set sensedpheromone list 2 pheromone
+  ask patch-at-heading-and-distance RotationAngle AntStepSize [
+    if (count ants-at pxcor pycor) = 0 or AntsMayShareLocation = true [
+      ask patch-at-heading-and-distance SensorAngle SensorOffset [
+        if (pheromone > item 1 sensedpheromone) and ((count ants-at pxcor pycor) = 0 or AntsMayShareLocation = true) [
+          set sensedpheromone list 2 pheromone
+        ]
+      ]
     ]
   ]
 
@@ -445,7 +462,7 @@ SensorOffset
 SensorOffset
 0
 10
-1.0
+2.0
 0.1
 1
 patches
