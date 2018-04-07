@@ -1,23 +1,38 @@
+globals [ showPheromone showAnts showFood ] ; Self-Explanatory
 breed [ ants ant ] ; Ants
 breed [ foods food ] ; Food
 patches-own [ pheromone ]
+ants-own [ eaten ]
+
+; Development purposes ONLY
+to drawpheromone
+  if mouse-down? [
+    let x (round mouse-xcor)
+    let y (round mouse-ycor)
+    ask patch x y [
+      set pheromone (pheromone + 0.1 * PheromoneMaxIntensity)
+      if pheromone > PheromoneMaxIntensity [
+        set pheromone PheromoneMaxIntensity
+        if not (showPheromone = false) [ set pcolor scale-color PheromoneColor pheromone 0 (PheromoneMaxIntensity * (PheromoneContrast / 100)) ]
+      ]
+    ]
+  ]
+end
 
 to setup
   clear-all
 
   ; Setup world according to options
-  resize-world (-1 * WorldSize / 2) (WorldSize / 2) (-1 * WorldSize / 2) (WorldSize / 2)
+  resize-world 0 WorldSize 0 WorldSize
   set-patch-size PatchSize
 
-  ask patches [
-    set pheromone random-float 1
-    set pcolor scale-color PheromoneColor pheromone 0 1
-  ]
+  ; Clear all pheromone of the field
+  clearPheromone
 
   create-foods feedingspots [
     set shape "circle"
     set color orange
-    set size (feedingspotradius / 2)
+    set size (feedingspotradius * 2)
     setxy random-xcor random-ycor
   ]
 
@@ -44,6 +59,7 @@ to setup
       create-ants 1 [
         set color red
         set shape "bug"
+        set eaten false
         setxy pxp pyp
       ]
     ]
@@ -53,8 +69,14 @@ to setup
 end
 
 to step
-  ; Ant Movement
+  ; Ant Behaviour
   ask ants [
+    ; Eat from foodsource
+    if (count foods in-radius (FeedingSpotRadius + 0.5) > 0) [ set eaten (not eaten) ]
+
+    ; Change of death
+    if (random-float 100 < ChanceOfDeath) [ die ]
+
     ; Sense your surroundings
     let sensedpheromone [ 0 0 ]
     set sensedpheromone ant-sense
@@ -64,15 +86,38 @@ to step
     if (item 0 sensedpheromone) = 2 [
       right RotationAngle
     ]
+
+    ; If possible, move
     if not ((item 0 sensedpheromone) = 3) [ forward AntStepSize ]
+
+    ; Dump pheromone
+    ifelse eaten [
+      set eaten false
+      set color green
+      ask patch-here [
+        set pheromone (pheromone + (pheromoneMaxIntensity * (pheromoneDepositRatio / 100)))
+        if pheromone > pheromoneMaxIntensity [ set pheromone pheromoneMaxIntensity ]
+      ]
+    ] [
+      set color red
+      ask patch-here [
+        set pheromone (pheromone + (pheromoneMaxIntensity / 1000))
+      ]
+    ]
   ]
 
-  ; Pheromone Dissapation
+  ; Diffuse pheromones
+  diffuse pheromone (PheromoneDiffusionRate / 100)
+
+  ; Pheromone Dissapation/Evaporation
   ask patches [
+    if pheromone > PheromoneMaxIntensity [ set pheromone PheromoneMaxIntensity ]
     set pheromone (pheromone * (1 - 1 / PheromoneEvaporationRate))
-    if precision pheromone 4 = 0 [ set pheromone random-float 1 ] ; For fun only, should not be in final
-    set pcolor scale-color PheromoneColor pheromone 0 1
+    if not (showPheromone = false) [ set pcolor scale-color PheromoneColor pheromone 0 (PheromoneMaxIntensity * (PheromoneContrast / 100)) ]
   ]
+
+  ; Tick
+  tick
 end
 
 ; Ants be sensing
@@ -80,52 +125,144 @@ to-report ant-sense
   let sensedpheromone [ 3 0 ]
 
   ; Look forward
-  let aifm false ; Ant In Front of Me
+  let cimf false ; Can I Move Forward (Is there not another ant there?)
   ask patch-ahead AntStepSize [
-    if (count ants-at pxcor pycor) = 0 or AntsMayShareLocation = true [
-      set aifm true
+    if (count ants-at pxcor pycor) = 0 or AntsMayShareLocation [
+      set cimf true
     ]
   ]
-  if aifm [
+  ; If I can move forward, consider pheromone
+  if cimf [
     ask patch-ahead SensorOffset [
       set sensedpheromone list 1 pheromone
     ]
   ]
 
-  ;; TODO Give Left and right AIFM like behaviour
   ; Look Left
-  ask patch-at-heading-and-distance (-1 * RotationAngle) AntStepSize [
-    if (count ants-at pxcor pycor) = 0 or AntsMayShareLocation = true [
-      ask patch-at-heading-and-distance (-1 * SensorAngle) SensorOffset [
-        if pheromone > (item 1 sensedpheromone) [
-          set sensedpheromone list 0 pheromone
-        ]
+  let ciml false ; Can I Move Left (Is there not another ant there?)
+  ask patch-left-and-ahead RotationAngle AntStepSize [
+    if (count ants-at pxcor pycor) = 0 or AntsMayShareLocation [
+      set ciml true
+    ]
+  ]
+  ; If I can move left, consider pheromone
+  if ciml [
+    ask patch-left-and-ahead SensorAngle SensorOffset [
+      if pheromone > (item 1 sensedpheromone) [
+        set sensedpheromone list 0 pheromone
       ]
     ]
   ]
 
   ; Look Right
-  ask patch-at-heading-and-distance RotationAngle AntStepSize [
-    if (count ants-at pxcor pycor) = 0 or AntsMayShareLocation = true [
-      ask patch-at-heading-and-distance SensorAngle SensorOffset [
-        if (pheromone > item 1 sensedpheromone) and ((count ants-at pxcor pycor) = 0 or AntsMayShareLocation = true) [
-          set sensedpheromone list 2 pheromone
-        ]
+  let cimr false ; Can I Move Right (Is there not another ant there?)
+  ask patch-right-and-ahead RotationAngle AntStepSize [
+    if (count ants-at pxcor pycor) = 0 or AntsMayShareLocation [
+      set cimr true
+    ]
+  ]
+  ; If I can move right, consider pheromone
+  if cimr [
+    ask patch-right-and-ahead SensorAngle SensorOffset [
+      if (pheromone > item 1 sensedpheromone) [
+        set sensedpheromone list 2 pheromone
       ]
     ]
   ]
 
   report sensedpheromone
 end
+
+; Clear all pheromone from the world
+to ClearPheromone
+  ask patches [
+    set pheromone 0
+    if not (showPheromone = false) [ set pcolor scale-color PheromoneColor pheromone 0 (PheromoneMaxIntensity * (PheromoneContrast / 100)) ]
+  ]
+end
+
+; Modify the amount of ants
+to ModAnts [ n ]
+  if n > 0 [
+    create-ants n [
+      set color red
+      set shape "bug"
+      setxy random-xcor random-ycor
+      set eaten false
+      if (showAnts = false) [ ht ]
+    ]
+  ]
+  if n < 0 [
+    if (abs n > count ants) [ set n (count ants) ]
+    ask n-of (abs n) ants [
+      die
+    ]
+  ]
+end
+
+; Spread out the ants over the playfield
+to RedistributeAnts
+  ask ants [
+    setxy random-xcor random-ycor
+  ]
+end
+
+; Toggle the visibility of ants
+to ToggleAnts
+  ; Fallback for initial showAnts value (is 0, should be considered true)
+  if (showAnts = 0) [ set showAnts true ]
+
+  ; Toggle showAnts
+  set showAnts (not showAnts)
+
+  ; Update ants
+  ask ants [
+    ifelse showAnts [ st ] [ ht ]
+  ]
+end
+
+; Toggle Food
+to ToggleFood
+  ; Fallback for initial showFood value (is 0, should be considered true)
+  if (showFood = 0) [ set showFood true ]
+
+  ; Toggle showFood
+  set showFood (not showFood)
+
+  ; Update foods
+  ask foods [
+    ifelse showFood [ st ] [ ht ]
+  ]
+end
+
+; Toggle the visibility of pheromone
+to TogglePheromone
+  ; Fallback for initial showPheromone value (is 0, should be considered true)
+  if (showPheromone = 0) [ set showPheromone true ]
+
+  ; Toggle showPheromone
+  set showPheromone (not showPheromone)
+
+  ; Update patches
+  ifelse showPheromone [
+    ask patches [
+      set pcolor (scale-color PheromoneColor pheromone 0 1)
+    ]
+  ] [
+    ask patches [
+      set pcolor black
+    ]
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 445
 25
-1083
-664
+1056
+637
 -1
 -1
-10.0
+3.0
 1
 10
 1
@@ -135,12 +272,12 @@ GRAPHICS-WINDOW
 1
 1
 1
--31
-31
--31
-31
 0
+200
 0
+200
+1
+1
 1
 ticks
 30.0
@@ -163,8 +300,8 @@ SLIDER
 WorldSize
 WorldSize
 20
-62
-62.0
+62 * (10 / patchSize)
+200.0
 2
 1
 patches²
@@ -248,9 +385,9 @@ SLIDER
 148
 PatchSize
 PatchSize
-10
+1
 40
-10.0
+3.0
 1
 1
 px
@@ -265,7 +402,7 @@ CoverageRate
 CoverageRate
 0
 100
-50.0
+15.0
 1
 1
 %
@@ -279,7 +416,7 @@ CHOOSER
 AntStartingPosition
 AntStartingPosition
 "Center" "Spread Out" "On Feeding Spots"
-2
+1
 
 TEXTBOX
 230
@@ -299,8 +436,8 @@ SLIDER
 FeedingSpots
 FeedingSpots
 0
-WorldSize * WorldSize
-59.0
+(WorldSize * WorldSize) / 1000
+40.0
 1
 1
 spots
@@ -313,10 +450,10 @@ SLIDER
 218
 FeedingSpotRadius
 FeedingSpotRadius
-1
-WorldSize
-2.0
-1
+0.5
+WorldSize / 10
+0.5
+0.5
 1
 patches
 HORIZONTAL
@@ -330,7 +467,7 @@ AntStepSize
 AntStepSize
 0
 WorldSize / 10
-0.1
+1.0
 .1
 1
 patch(es)
@@ -345,7 +482,7 @@ SensorAngle
 SensorAngle
 0
 180
-15.0
+22.5
 1
 1
 °
@@ -358,7 +495,7 @@ SWITCH
 283
 AntsMayShareLocation
 AntsMayShareLocation
-0
+1
 1
 -1000
 
@@ -382,11 +519,11 @@ SLIDER
 285
 430
 318
-ChangeOfDeath
-ChangeOfDeath
+ChanceOfDeath
+ChanceOfDeath
 0
 1
-0.05
+0.01
 0.01
 1
 %
@@ -462,7 +599,7 @@ SensorOffset
 SensorOffset
 0
 10
-2.0
+9.0
 0.1
 1
 patches
@@ -470,20 +607,20 @@ HORIZONTAL
 
 INPUTBOX
 5
-285
+315
 210
-345
+375
 PheromoneColor
-85.0
+45.0
 1
 0
 Color
 
 SWITCH
 5
-350
+380
 210
-383
+413
 AutomaticPheromoneContrast
 AutomaticPheromoneContrast
 1
@@ -492,14 +629,14 @@ AutomaticPheromoneContrast
 
 SLIDER
 5
-385
+415
 210
-418
+448
 PheromoneContrast
 PheromoneContrast
 0
-100
-50.0
+200
+12.0
 1
 1
 %
@@ -511,7 +648,7 @@ INPUTBOX
 325
 530
 AntsToModify
-10.0
+100.0
 1
 0
 Number
@@ -545,9 +682,9 @@ TEXTBOX
 
 TEXTBOX
 10
-270
+300
 160
-288
+318
 Pheromone Controls\n
 11
 0.0
@@ -609,9 +746,9 @@ TEXTBOX
 
 BUTTON
 5
-420
+450
 210
-453
+483
 Toggle Pheromone Visibility
 TogglePheromone
 NIL
@@ -626,9 +763,9 @@ NIL
 
 TEXTBOX
 5
-255
+285
 215
-273
+303
 -----------------------------------------
 13
 5.0
@@ -640,7 +777,7 @@ BUTTON
 210
 253
 Toggle Feeding Spot Visibility
-ToggleFeedingSpots
+ToggleFood
 NIL
 1
 T
@@ -653,14 +790,14 @@ NIL
 
 SLIDER
 5
-455
+485
 210
-488
-PheromoneDipositRatio
-PheromoneDipositRatio
+518
+PheromoneDepositRatio
+PheromoneDepositRatio
 0
 100
-50.0
+20.0
 1
 1
 %
@@ -668,14 +805,14 @@ HORIZONTAL
 
 SLIDER
 5
-490
+520
 210
-523
+553
 PheromoneEvaporationRate
 PheromoneEvaporationRate
 0
 100
-50.0
+20.0
 1
 1
 ticks
@@ -683,24 +820,24 @@ HORIZONTAL
 
 SLIDER
 5
-525
+555
 210
-558
+588
 PheromoneDiffusionRate
 PheromoneDiffusionRate
 0
 100
-55.0
+67.0
 1
 1
-patch/tick
+% per tick
 HORIZONTAL
 
 SLIDER
 5
-560
+590
 210
-593
+623
 PheromoneMaxIntensity
 PheromoneMaxIntensity
 0
@@ -708,8 +845,47 @@ PheromoneMaxIntensity
 50.0
 1
 1
- P O W E R
+PP
 HORIZONTAL
+
+BUTTON
+290
+535
+430
+580
+Draw Pheromone
+drawpheromone
+T
+1
+T
+OBSERVER
+NIL
+M
+NIL
+NIL
+0
+
+SWITCH
+5
+255
+210
+288
+PheromoneAtFeedingSpots
+PheromoneAtFeedingSpots
+0
+1
+-1000
+
+MONITOR
+225
+535
+287
+580
+AntCount
+count ants
+0
+1
+11
 
 @#$#@#$#@
 ## WHAT IS IT?
