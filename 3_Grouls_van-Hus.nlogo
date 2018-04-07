@@ -64,7 +64,7 @@ to step
     if (item 0 sensedpheromone) = 2 [
       right RotationAngle
     ]
-    if not ((item 0 sensedpheromone) = 3) [ forward 1 ]
+    if not ((item 0 sensedpheromone) = 3) [ forward AntStepSize ]
   ]
 
   ; Pheromone Dissapation
@@ -121,11 +121,11 @@ end
 GRAPHICS-WINDOW
 445
 25
-1272
-853
+1083
+664
 -1
 -1
-13.0
+10.0
 1
 10
 1
@@ -250,7 +250,7 @@ PatchSize
 PatchSize
 10
 40
-13.0
+10.0
 1
 1
 px
@@ -358,7 +358,7 @@ SWITCH
 283
 AntsMayShareLocation
 AntsMayShareLocation
-1
+0
 1
 -1000
 
