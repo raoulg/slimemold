@@ -1,4 +1,4 @@
-globals [ showPheromone showAnts showFood ] ; Self-Explanatory
+globals [ showPheromone showAnts showFood totalPheromone ] ; Self-Explanatory
 breed [ ants ant ] ; Ants
 breed [ foods food ] ; Food
 patches-own [ pheromone ]
@@ -59,7 +59,7 @@ to setup
       create-ants 1 [
         set color red
         set shape "bug"
-        set eaten false
+        set eaten 0
         setxy pxp pyp
       ]
     ]
@@ -69,10 +69,19 @@ to setup
 end
 
 to step
+  ; Add pheromone at feedingspots
+  if pheromoneAtFeedingSpots > 0 [
+    ask foods [
+      ask patch-here [
+        set pheromone (pheromone + pheromoneMaxIntensity * (pheromoneAtFeedingSpots / 100))
+      ]
+    ]
+  ]
+
   ; Ant Behaviour
   ask ants [
     ; Eat from foodsource
-    if (count foods in-radius (FeedingSpotRadius + 0.5) > 0) [ set eaten (not eaten) ]
+    if (count foods in-radius (FeedingSpotRadius + 0.5) > 0) [ set eaten AntsSatiatedTicks ]
 
     ; Change of death
     if (random-float 100 < ChanceOfDeath) [ die ]
@@ -91,8 +100,10 @@ to step
     if not ((item 0 sensedpheromone) = 3) [ forward AntStepSize ]
 
     ; Dump pheromone
-    ifelse eaten [
-      set eaten false
+    ifelse eaten > 0 [
+      if AntsGoHungry [
+        set eaten (eaten - 1)
+      ]
       set color green
       ask patch-here [
         set pheromone (pheromone + (pheromoneMaxIntensity * (pheromoneDepositRatio / 100)))
@@ -101,7 +112,8 @@ to step
     ] [
       set color red
       ask patch-here [
-        set pheromone (pheromone + (pheromoneMaxIntensity / 1000))
+        ; Passive pheromone discretion
+        set pheromone (pheromone + (pheromoneMaxIntensity * (passivePheromoneDiscretion / 100)))
       ]
     ]
   ]
@@ -110,10 +122,19 @@ to step
   diffuse pheromone (PheromoneDiffusionRate / 100)
 
   ; Pheromone Dissapation/Evaporation
+  set totalPheromone 0
   ask patches [
     if pheromone > PheromoneMaxIntensity [ set pheromone PheromoneMaxIntensity ]
     set pheromone (pheromone * (1 - 1 / PheromoneEvaporationRate))
     if not (showPheromone = false) [ set pcolor scale-color PheromoneColor pheromone 0 (PheromoneMaxIntensity * (PheromoneContrast / 100)) ]
+    set totalPheromone (totalPheromone + pheromone)
+  ]
+
+  ; Update pheromone contrast
+  if AutomaticPheromoneContrast [
+    set PheromoneContrast (precision ((totalPheromone - count foods * (PheromoneMaxIntensity * (PheromoneAtFeedingSpots / 100))) / 1000 * 0.75) 1)
+    if PheromoneContrast < 1 [ set PheromoneContrast 1 ]
+    if PheromoneContrast > 200 [ set PheromoneContrast 200 ]
   ]
 
   ; Tick
@@ -188,7 +209,7 @@ to ModAnts [ n ]
       set color red
       set shape "bug"
       setxy random-xcor random-ycor
-      set eaten false
+      set eaten 0
       if (showAnts = false) [ ht ]
     ]
   ]
@@ -437,7 +458,7 @@ FeedingSpots
 FeedingSpots
 0
 (WorldSize * WorldSize) / 1000
-40.0
+20.0
 1
 1
 spots
@@ -516,9 +537,9 @@ HORIZONTAL
 
 SLIDER
 225
-285
+355
 430
-318
+388
 ChanceOfDeath
 ChanceOfDeath
 0
@@ -531,9 +552,9 @@ HORIZONTAL
 
 TEXTBOX
 230
-370
+475
 380
-388
+493
 Playing for God
 11
 0.0
@@ -541,9 +562,9 @@ Playing for God
 
 BUTTON
 225
-385
+490
 325
-418
+523
 Redistribute Ants
 RedistributeAnts
 NIL
@@ -558,9 +579,9 @@ NIL
 
 BUTTON
 330
-385
+490
 430
-418
+523
 Clear Pheromone
 ClearPheromone
 NIL
@@ -575,9 +596,9 @@ NIL
 
 BUTTON
 225
-420
+525
 430
-453
+558
 Redistribute Ants & Clear Pheromone
 RedistributeAnts\nClearPheromone
 NIL
@@ -607,9 +628,9 @@ HORIZONTAL
 
 INPUTBOX
 5
-315
+280
 210
-375
+340
 PheromoneColor
 45.0
 1
@@ -618,25 +639,25 @@ Color
 
 SWITCH
 5
-380
+345
 210
-413
+378
 AutomaticPheromoneContrast
 AutomaticPheromoneContrast
-1
+0
 1
 -1000
 
 SLIDER
 5
-415
+380
 210
-448
+413
 PheromoneContrast
 PheromoneContrast
-0
+1
 200
-12.0
+200.0
 1
 1
 %
@@ -644,9 +665,9 @@ HORIZONTAL
 
 INPUTBOX
 225
-460
+595
 325
-530
+665
 AntsToModify
 100.0
 1
@@ -655,9 +676,9 @@ Number
 
 BUTTON
 330
-460
+595
 430
-493
+628
 Add Ants
 ModAnts (abs AntsToModify)
 NIL
@@ -674,17 +695,17 @@ TEXTBOX
 215
 10
 230
-596
-|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
+751
+|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
 11
 5.0
 1
 
 TEXTBOX
 10
-300
+265
 160
-318
+283
 Pheromone Controls\n
 11
 0.0
@@ -692,9 +713,9 @@ Pheromone Controls\n
 
 BUTTON
 330
-497
+632
 430
-530
+665
 Remove Ants
 ModAnts (-1 * abs AntsToModify)
 NIL
@@ -711,17 +732,17 @@ TEXTBOX
 435
 10
 450
-541
-|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
+751
+|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|\n|
 11
 5.0
 1
 
 BUTTON
 225
-320
+425
 430
-353
+458
 Toggle Ant Visibility
 ToggleAnts
 NIL
@@ -736,9 +757,9 @@ NIL
 
 TEXTBOX
 225
-355
+460
 435
-373
+478
 -----------------------------------------
 13
 5.0
@@ -746,9 +767,9 @@ TEXTBOX
 
 BUTTON
 5
-450
+415
 210
-483
+448
 Toggle Pheromone Visibility
 TogglePheromone
 NIL
@@ -763,9 +784,9 @@ NIL
 
 TEXTBOX
 5
-285
+250
 215
-303
+268
 -----------------------------------------
 13
 5.0
@@ -790,14 +811,14 @@ NIL
 
 SLIDER
 5
-485
+450
 210
-518
+483
 PheromoneDepositRatio
 PheromoneDepositRatio
 0
 100
-20.0
+100.0
 1
 1
 %
@@ -805,14 +826,14 @@ HORIZONTAL
 
 SLIDER
 5
-520
+485
 210
-553
+518
 PheromoneEvaporationRate
 PheromoneEvaporationRate
 0
 100
-20.0
+5.0
 1
 1
 ticks
@@ -820,24 +841,24 @@ HORIZONTAL
 
 SLIDER
 5
-555
+520
 210
-588
+553
 PheromoneDiffusionRate
 PheromoneDiffusionRate
 0
 100
-67.0
+90.0
 1
 1
-% per tick
+%/tick
 HORIZONTAL
 
 SLIDER
 5
-590
+555
 210
-623
+588
 PheromoneMaxIntensity
 PheromoneMaxIntensity
 0
@@ -845,14 +866,14 @@ PheromoneMaxIntensity
 50.0
 1
 1
-PP
+/ patch
 HORIZONTAL
 
 BUTTON
-290
-535
+225
+720
 430
-580
+753
 Draw Pheromone
 drawpheromone
 T
@@ -865,27 +886,100 @@ NIL
 NIL
 0
 
-SWITCH
-5
-255
-210
-288
-PheromoneAtFeedingSpots
-PheromoneAtFeedingSpots
-0
-1
--1000
-
 MONITOR
 225
-535
-287
-580
-AntCount
+670
+325
+715
+Total Ants
 count ants
 0
 1
 11
+
+SLIDER
+5
+590
+210
+623
+PheromoneAtFeedingSpots
+PheromoneAtFeedingSpots
+0
+100
+100.0
+1
+1
+%
+HORIZONTAL
+
+SLIDER
+225
+390
+430
+423
+PassivePheromoneDiscretion
+PassivePheromoneDiscretion
+0
+1
+0.0
+0.1
+1
+%
+HORIZONTAL
+
+MONITOR
+332
+670
+427
+715
+Total Pheromone
+totalPheromone
+0
+1
+11
+
+BUTTON
+225
+560
+430
+593
+Make All Ants Hungry
+ask ants [ set eaten false ]
+NIL
+1
+T
+OBSERVER
+NIL
+H
+NIL
+NIL
+0
+
+SWITCH
+225
+285
+430
+318
+AntsGoHungry
+AntsGoHungry
+1
+1
+-1000
+
+SLIDER
+225
+320
+430
+353
+AntsSatiatedTicks
+AntsSatiatedTicks
+1
+100
+50.0
+1
+1
+ticks
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
