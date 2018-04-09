@@ -318,12 +318,22 @@ to AntsBeBlessed
     set blessed true
   ]
 end
+
+to FindSteinerTrees
+  set FeedingSpotRadius 3
+  set pheromoneDepositRatio 60
+  set pheromoneAtFeedingSpots 60
+  set PheromoneEvaporationRate 25
+  set PheromoneDiffusionRate 90
+  set AntsGoHungry true
+  set PassivePheromoneDiscretion 0
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 445
 25
-786
-367
+918
+499
 -1
 -1
 3.0
@@ -337,9 +347,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-110
+154
 0
-110
+154
 1
 1
 1
@@ -365,7 +375,7 @@ WorldSize
 WorldSize
 20
 62 * (10 / patchSize)
-110.0
+154.0
 2
 1
 patches²
@@ -466,7 +476,7 @@ CoverageRate
 CoverageRate
 0
 100
-12.0
+10.0
 1
 1
 %
@@ -501,7 +511,7 @@ FeedingSpots
 FeedingSpots
 0
 (WorldSize * WorldSize) / 1000
-12.0
+10.0
 1
 1
 spots
@@ -516,7 +526,7 @@ FeedingSpotRadius
 FeedingSpotRadius
 0.5
 WorldSize / 10
-2.0
+3.0
 0.5
 1
 patches
@@ -587,7 +597,7 @@ ChanceOfDeath
 ChanceOfDeath
 0
 0.01
-0.002
+0.01
 0.001
 1
 %
@@ -700,7 +710,7 @@ PheromoneContrast
 PheromoneContrast
 1
 200
-140.0
+103.0
 1
 1
 %
@@ -948,8 +958,8 @@ SLIDER
 PheromoneAtFeedingSpots
 PheromoneAtFeedingSpots
 0
-500
-203.0
+100
+60.0
 1
 1
 %
@@ -1005,7 +1015,7 @@ SWITCH
 318
 AntsGoHungry
 AntsGoHungry
-1
+0
 1
 -1000
 
@@ -1031,6 +1041,23 @@ BUTTON
 668
 AntsBeBlessed
 AntsBeBlessed
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+5
+680
+137
+713
+FindSteinerTrees
+FindSteinerTrees
 NIL
 1
 T
