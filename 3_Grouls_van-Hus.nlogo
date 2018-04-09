@@ -34,12 +34,13 @@ to setup
     set color orange
     set size (feedingspotradius * 2)
     setxy random-xcor random-ycor
+    ; put food on feedingspots
     ask patches in-radius feedingspotradius [ set foodhere true ]
   ]
 
   repeat (count patches) [
-    let pxp (WorldSize / 2) ; Patch x preference
-    let pyp (WorldSize / 2) ; Patch y preference
+    let pxp (WorldSize / 2) ; Patch x preference. Default centre
+    let pyp (WorldSize / 2) ; Patch y preference. Default centre
     let pap false ; Patch allow preference
     ask one-of patches [
       if random 100 < coverageRate [
@@ -53,9 +54,11 @@ to setup
             set pyp ycor
           ]
         ]
+        ; if AntStartingPositon is equal to center, do nothing because pxp pyp default to centre
         set pap true
       ]
     ]
+    ; use boolean workaround because ants cannot be created within ask patches environment
     if pap = true [
       create-ants 1 [
         set color red
@@ -74,6 +77,7 @@ to step
   if pheromoneAtFeedingSpots > 0 [
     ask foods [
       ask patches in-radius feedingspotradius [
+        ; keep adding pheromone against diffusion
         set pheromone (pheromone + pheromoneMaxIntensity * (pheromoneAtFeedingSpots / 100))
       ]
     ]
@@ -85,7 +89,7 @@ to step
     if (count foods in-radius (FeedingSpotRadius + 0.5) > 0) [ set eaten AntsSatiatedTicks ]
 
     ; Change of death
-    if (random-float 100 < ChanceOfDeath) [ die ]
+    if (random-float 1 < ChanceOfDeath) [ die ]
 
     ; Sense your surroundings
     let sensedpheromone [ 0 0 ]
@@ -283,8 +287,8 @@ end
 GRAPHICS-WINDOW
 445
 25
-1056
-637
+792
+373
 -1
 -1
 3.0
@@ -298,9 +302,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-200
+112
 0
-200
+112
 1
 1
 1
@@ -326,7 +330,7 @@ WorldSize
 WorldSize
 20
 62 * (10 / patchSize)
-200.0
+112.0
 2
 1
 patches²
@@ -441,7 +445,7 @@ CHOOSER
 AntStartingPosition
 AntStartingPosition
 "Center" "Spread Out" "On Feeding Spots"
-1
+2
 
 TEXTBOX
 230
