@@ -2,7 +2,7 @@ globals [ showPheromone showAnts showFood totalPheromone ] ; Self-Explanatory
 breed [ ants ant ] ; Ants
 breed [ foods food ] ; Food
 patches-own [ pheromone foodhere ]
-ants-own [ eaten ]
+ants-own [ eaten blessed ]
 
 ; Development purposes ONLY
 to drawpheromone
@@ -65,6 +65,7 @@ to setup
         set shape "bug"
         set eaten 0
         setxy pxp pyp
+        set blessed false
       ]
     ]
   ]
@@ -86,25 +87,39 @@ to step
   ; Ant Behaviour
   ask ants [
     ; Eat from foodsource
-    if (count foods in-radius (FeedingSpotRadius + 0.5) > 0) [ set eaten AntsSatiatedTicks ]
+    if (count foods in-radius (FeedingSpotRadius + 0.5) > 0) [
+      set eaten AntsSatiatedTicks
+      set blessed true
+    ]
 
     ; Change of death
-    if (random-float 1 < ChanceOfDeath) [ die ]
+    if (random-float 100 < ChanceOfDeath) [
+      die
+    ]
 
     ; Sense your surroundings
     let sensedpheromone [ 0 0 ]
+    ; update with direction (at item 0) of highest amount of pheromone (at item 1):
+    ;   0 left
+    ;   1 forward
+    ;   2 right
+    ;   3 don't move
     set sensedpheromone ant-sense
+    ; turn left if appropriate
     if (item 0 sensedpheromone) = 0 [
       left RotationAngle
     ]
+    ; turn right if appropriate
     if (item 0 sensedpheromone) = 2 [
       right RotationAngle
     ]
-
-    ; If possible, move
-    if not ((item 0 sensedpheromone) = 3) [ forward AntStepSize ]
+    ; If possible, move in the direction the ant is now facing
+    if not ((item 0 sensedpheromone) = 3) [
+      forward AntStepSize
+    ]
 
     ; Dump pheromone
+    if (blessed = true ) [
     ifelse eaten > 0 [
       if AntsGoHungry [
         set eaten (eaten - 1)
@@ -121,6 +136,7 @@ to step
         set pheromone (pheromone + (pheromoneMaxIntensity * (passivePheromoneDiscretion / 100)))
       ]
     ]
+  ]
   ]
 
   ; Diffuse pheromones
@@ -296,12 +312,18 @@ to TogglePheromone
     ]
   ]
 end
+
+to AntsBeBlessed
+  ask ants [
+    set blessed true
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 445
 25
-792
-373
+786
+367
 -1
 -1
 3.0
@@ -315,9 +337,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-112
+110
 0
-112
+110
 1
 1
 1
@@ -343,7 +365,7 @@ WorldSize
 WorldSize
 20
 62 * (10 / patchSize)
-112.0
+110.0
 2
 1
 patches²
@@ -444,7 +466,7 @@ CoverageRate
 CoverageRate
 0
 100
-15.0
+12.0
 1
 1
 %
@@ -458,7 +480,7 @@ CHOOSER
 AntStartingPosition
 AntStartingPosition
 "Center" "Spread Out" "On Feeding Spots"
-2
+1
 
 TEXTBOX
 230
@@ -479,7 +501,7 @@ FeedingSpots
 FeedingSpots
 0
 (WorldSize * WorldSize) / 1000
-10.0
+12.0
 1
 1
 spots
@@ -564,9 +586,9 @@ SLIDER
 ChanceOfDeath
 ChanceOfDeath
 0
-1
 0.01
-0.01
+0.002
+0.001
 1
 %
 HORIZONTAL
@@ -665,7 +687,7 @@ SWITCH
 378
 AutomaticPheromoneContrast
 AutomaticPheromoneContrast
-0
+1
 1
 -1000
 
@@ -678,7 +700,7 @@ PheromoneContrast
 PheromoneContrast
 1
 200
-200.0
+140.0
 1
 1
 %
@@ -839,7 +861,7 @@ PheromoneDepositRatio
 PheromoneDepositRatio
 0
 100
-10.0
+60.0
 1
 1
 %
@@ -884,7 +906,7 @@ PheromoneMaxIntensity
 PheromoneMaxIntensity
 1
 100
-100.0
+75.0
 1
 1
 / patch
@@ -927,7 +949,7 @@ PheromoneAtFeedingSpots
 PheromoneAtFeedingSpots
 0
 500
-500.0
+203.0
 1
 1
 %
@@ -941,7 +963,7 @@ SLIDER
 PassivePheromoneDiscretion
 PassivePheromoneDiscretion
 0
-1
+10
 0.0
 0.1
 1
@@ -1001,6 +1023,23 @@ AntsSatiatedTicks
 1
 ticks
 HORIZONTAL
+
+BUTTON
+5
+635
+122
+668
+AntsBeBlessed
+AntsBeBlessed
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 # Model
