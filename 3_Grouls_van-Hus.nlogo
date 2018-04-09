@@ -151,7 +151,14 @@ end
 
 ; Ants be sensing
 to-report ant-sense
-  let sensedpheromone [ 3 0 ]
+  ; item 0 stores direction
+  ;   0 left
+  ;   1 forward
+  ;   2 right
+  ;   3 don't move
+  ; item 1 stores amount of pheromone
+
+  let sensedpheromone [ 3 0 ] ; default to don't move, no pheromone
 
   ; Look forward
   let cimf false ; Can I Move Forward (Is there not another ant there?)
@@ -163,6 +170,7 @@ to-report ant-sense
   ; If I can move forward, consider pheromone
   if cimf [
     ask patch-ahead SensorOffset [
+      ; set direction forward (1) and store pheromone
       set sensedpheromone list 1 pheromone
     ]
   ]
@@ -177,8 +185,11 @@ to-report ant-sense
   ; If I can move left, consider pheromone
   if ciml [
     ask patch-left-and-ahead SensorAngle SensorOffset [
+      ; replace pheromone with left value if there is more at the left than ahead
+      ; and set direction to left (0)
       if pheromone > (item 1 sensedpheromone) [
         set sensedpheromone list 0 pheromone
+
       ]
     ]
   ]
@@ -194,6 +205,8 @@ to-report ant-sense
   if cimr [
     ask patch-right-and-ahead SensorAngle SensorOffset [
       if (pheromone > item 1 sensedpheromone) [
+        ; if there is more to the right than left or forward,
+        ; replace amount and set direction to the right (2)
         set sensedpheromone list 2 pheromone
       ]
     ]
