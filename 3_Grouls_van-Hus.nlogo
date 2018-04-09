@@ -1,8 +1,8 @@
 globals [ showPheromone showAnts showFood totalPheromone ] ; Self-Explanatory
 breed [ ants ant ] ; Ants
 breed [ foods food ] ; Food
-patches-own [ pheromone ]
-ants-own [ eaten ]
+patches-own [ pheromone foodhere ]
+ants-own [ eaten blessed ]
 
 ; Development purposes ONLY
 to drawpheromone
@@ -34,11 +34,13 @@ to setup
     set color orange
     set size (feedingspotradius * 2)
     setxy random-xcor random-ycor
+    ; put food on feedingspots
+    ask patches in-radius feedingspotradius [ set foodhere true ]
   ]
 
   repeat (count patches) [
-    let pxp (WorldSize / 2) ; Patch x preference
-    let pyp (WorldSize / 2) ; Patch y preference
+    let pxp (WorldSize / 2) ; Patch x preference. Default centre
+    let pyp (WorldSize / 2) ; Patch y preference. Default centre
     let pap false ; Patch allow preference
     ask one-of patches [
       if random 100 < coverageRate [
@@ -52,15 +54,18 @@ to setup
             set pyp ycor
           ]
         ]
+        ; if AntStartingPositon is equal to center, do nothing because pxp pyp default to centre
         set pap true
       ]
     ]
+    ; use boolean workaround because ants cannot be created within ask patches environment
     if pap = true [
       create-ants 1 [
         set color red
         set shape "bug"
         set eaten 0
         setxy pxp pyp
+        set blessed false
       ]
     ]
   ]
@@ -72,7 +77,8 @@ to step
   ; Add pheromone at feedingspots
   if pheromoneAtFeedingSpots > 0 [
     ask foods [
-      ask patch-here [
+      ask patches in-radius feedingspotradius [
+        ; keep adding pheromone against diffusion
         set pheromone (pheromone + pheromoneMaxIntensity * (pheromoneAtFeedingSpots / 100))
       ]
     ]
@@ -81,25 +87,39 @@ to step
   ; Ant Behaviour
   ask ants [
     ; Eat from foodsource
-    if (count foods in-radius (FeedingSpotRadius + 0.5) > 0) [ set eaten AntsSatiatedTicks ]
+    if (count foods in-radius (FeedingSpotRadius + 0.5) > 0) [
+      set eaten AntsSatiatedTicks
+      set blessed true
+    ]
 
     ; Change of death
-    if (random-float 100 < ChanceOfDeath) [ die ]
+    if (random-float 100 < ChanceOfDeath) [
+      die
+    ]
 
     ; Sense your surroundings
     let sensedpheromone [ 0 0 ]
+    ; update with direction (at item 0) of highest amount of pheromone (at item 1):
+    ;   0 left
+    ;   1 forward
+    ;   2 right
+    ;   3 don't move
     set sensedpheromone ant-sense
+    ; turn left if appropriate
     if (item 0 sensedpheromone) = 0 [
       left RotationAngle
     ]
+    ; turn right if appropriate
     if (item 0 sensedpheromone) = 2 [
       right RotationAngle
     ]
-
-    ; If possible, move
-    if not ((item 0 sensedpheromone) = 3) [ forward AntStepSize ]
+    ; If possible, move in the direction the ant is now facing
+    if not ((item 0 sensedpheromone) = 3) [
+      forward AntStepSize
+    ]
 
     ; Dump pheromone
+    if (blessed = true ) [
     ifelse eaten > 0 [
       if AntsGoHungry [
         set eaten (eaten - 1)
@@ -117,6 +137,7 @@ to step
       ]
     ]
   ]
+  ]
 
   ; Diffuse pheromones
   diffuse pheromone (PheromoneDiffusionRate / 100)
@@ -124,15 +145,18 @@ to step
   ; Pheromone Dissapation/Evaporation
   set totalPheromone 0
   ask patches [
-    if pheromone > PheromoneMaxIntensity [ set pheromone PheromoneMaxIntensity ]
     set pheromone (pheromone * (1 - 1 / PheromoneEvaporationRate))
     if not (showPheromone = false) [ set pcolor scale-color PheromoneColor pheromone 0 (PheromoneMaxIntensity * (PheromoneContrast / 100)) ]
-    set totalPheromone (totalPheromone + pheromone)
+    if not (foodhere = true) [
+      if pheromone > PheromoneMaxIntensity [ set pheromone PheromoneMaxIntensity ]
+      set totalPheromone (totalPheromone + pheromone)
+    ]
   ]
 
   ; Update pheromone contrast
   if AutomaticPheromoneContrast [
-    set PheromoneContrast (precision ((totalPheromone - count foods * (PheromoneMaxIntensity * (PheromoneAtFeedingSpots / 100))) / 1000 * 0.75) 1)
+    set PheromoneContrast (precision (totalPheromone / 1000 * 2) 1)
+    ;set PheromoneContrast (precision ((totalPheromone - count foods * (PheromoneMaxIntensity * (PheromoneAtFeedingSpots / 100))) / 1000 * 0.75) 1)
     if PheromoneContrast < 1 [ set PheromoneContrast 1 ]
     if PheromoneContrast > 200 [ set PheromoneContrast 200 ]
   ]
@@ -143,7 +167,14 @@ end
 
 ; Ants be sensing
 to-report ant-sense
-  let sensedpheromone [ 3 0 ]
+  ; item 0 stores direction
+  ;   0 left
+  ;   1 forward
+  ;   2 right
+  ;   3 don't move
+  ; item 1 stores amount of pheromone
+
+  let sensedpheromone [ 3 0 ] ; default to don't move, no pheromone
 
   ; Look forward
   let cimf false ; Can I Move Forward (Is there not another ant there?)
@@ -155,6 +186,7 @@ to-report ant-sense
   ; If I can move forward, consider pheromone
   if cimf [
     ask patch-ahead SensorOffset [
+      ; set direction forward (1) and store pheromone
       set sensedpheromone list 1 pheromone
     ]
   ]
@@ -169,8 +201,11 @@ to-report ant-sense
   ; If I can move left, consider pheromone
   if ciml [
     ask patch-left-and-ahead SensorAngle SensorOffset [
+      ; replace pheromone with left value if there is more at the left than ahead
+      ; and set direction to left (0)
       if pheromone > (item 1 sensedpheromone) [
         set sensedpheromone list 0 pheromone
+
       ]
     ]
   ]
@@ -186,6 +221,8 @@ to-report ant-sense
   if cimr [
     ask patch-right-and-ahead SensorAngle SensorOffset [
       if (pheromone > item 1 sensedpheromone) [
+        ; if there is more to the right than left or forward,
+        ; replace amount and set direction to the right (2)
         set sensedpheromone list 2 pheromone
       ]
     ]
@@ -275,12 +312,30 @@ to TogglePheromone
     ]
   ]
 end
+
+to AntsBeBlessed
+  ask ants [
+    set blessed true
+  ]
+end
+
+to FindSteinerTrees
+  set FeedingSpotRadius 3
+  set pheromoneDepositRatio 50
+  set pheromoneAtFeedingSpots 60
+  set PheromoneEvaporationRate 25
+  set PheromoneDiffusionRate 90
+  set AntsGoHungry true
+  set PassivePheromoneDiscretion 0
+  set CoverageRate 15
+  set AntStartingPosition "Spread Out"
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 445
 25
-1056
-637
+918
+499
 -1
 -1
 3.0
@@ -294,9 +349,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-200
+154
 0
-200
+154
 1
 1
 1
@@ -322,7 +377,7 @@ WorldSize
 WorldSize
 20
 62 * (10 / patchSize)
-200.0
+154.0
 2
 1
 patches²
@@ -458,7 +513,7 @@ FeedingSpots
 FeedingSpots
 0
 (WorldSize * WorldSize) / 1000
-10.0
+7.0
 1
 1
 spots
@@ -473,7 +528,7 @@ FeedingSpotRadius
 FeedingSpotRadius
 0.5
 WorldSize / 10
-1.0
+3.0
 0.5
 1
 patches
@@ -516,7 +571,7 @@ SWITCH
 283
 AntsMayShareLocation
 AntsMayShareLocation
-1
+0
 1
 -1000
 
@@ -543,9 +598,9 @@ SLIDER
 ChanceOfDeath
 ChanceOfDeath
 0
-1
 0.01
 0.01
+0.001
 1
 %
 HORIZONTAL
@@ -818,7 +873,7 @@ PheromoneDepositRatio
 PheromoneDepositRatio
 0
 100
-100.0
+50.0
 1
 1
 %
@@ -831,7 +886,7 @@ SLIDER
 518
 PheromoneEvaporationRate
 PheromoneEvaporationRate
-0
+1
 100
 25.0
 1
@@ -863,7 +918,7 @@ PheromoneMaxIntensity
 PheromoneMaxIntensity
 1
 100
-50.0
+75.0
 1
 1
 / patch
@@ -906,7 +961,7 @@ PheromoneAtFeedingSpots
 PheromoneAtFeedingSpots
 0
 100
-100.0
+60.0
 1
 1
 %
@@ -920,7 +975,7 @@ SLIDER
 PassivePheromoneDiscretion
 PassivePheromoneDiscretion
 0
-1
+10
 0.0
 0.1
 1
@@ -962,7 +1017,7 @@ SWITCH
 318
 AntsGoHungry
 AntsGoHungry
-1
+0
 1
 -1000
 
@@ -980,6 +1035,50 @@ AntsSatiatedTicks
 1
 ticks
 HORIZONTAL
+
+BUTTON
+10
+670
+205
+703
+AntsBeBlessed
+AntsBeBlessed
+NIL
+1
+T
+OBSERVER
+NIL
+B
+NIL
+NIL
+1
+
+BUTTON
+10
+715
+205
+748
+FindSteinerTrees
+FindSteinerTrees
+NIL
+1
+T
+OBSERVER
+NIL
+\
+NIL
+NIL
+1
+
+TEXTBOX
+10
+635
+160
+653
+Extra features
+11
+0.0
+1
 
 @#$#@#$#@
 # Model
