@@ -327,6 +327,7 @@ to FindSteinerTrees
   set PheromoneDiffusionRate 90
   set AntsGoHungry true
   set PassivePheromoneDiscretion 0
+  set CoverageRate 15
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -476,7 +477,7 @@ CoverageRate
 CoverageRate
 0
 100
-10.0
+15.0
 1
 1
 %
@@ -582,7 +583,7 @@ RotationAngle
 RotationAngle
 0
 180
-45.0
+64.0
 1
 1
 °
@@ -710,7 +711,7 @@ PheromoneContrast
 PheromoneContrast
 1
 200
-103.0
+126.0
 1
 1
 %
@@ -871,7 +872,7 @@ PheromoneDepositRatio
 PheromoneDepositRatio
 0
 100
-60.0
+49.0
 1
 1
 %
@@ -886,7 +887,7 @@ PheromoneEvaporationRate
 PheromoneEvaporationRate
 0
 100
-25.0
+0.0
 1
 1
 ticks
@@ -959,7 +960,7 @@ PheromoneAtFeedingSpots
 PheromoneAtFeedingSpots
 0
 100
-60.0
+49.0
 1
 1
 %
@@ -1035,10 +1036,10 @@ ticks
 HORIZONTAL
 
 BUTTON
-5
-635
-122
-668
+10
+670
+205
+703
 AntsBeBlessed
 AntsBeBlessed
 NIL
@@ -1046,16 +1047,16 @@ NIL
 T
 OBSERVER
 NIL
-NIL
+B
 NIL
 NIL
 1
 
 BUTTON
-5
-680
-137
-713
+10
+715
+205
+748
 FindSteinerTrees
 FindSteinerTrees
 NIL
@@ -1063,9 +1064,19 @@ NIL
 T
 OBSERVER
 NIL
+\
 NIL
 NIL
-NIL
+1
+
+TEXTBOX
+10
+635
+160
+653
+Extra features
+11
+0.0
 1
 
 @#$#@#$#@
