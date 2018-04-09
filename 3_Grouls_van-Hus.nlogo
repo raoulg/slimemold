@@ -321,13 +321,14 @@ end
 
 to FindSteinerTrees
   set FeedingSpotRadius 3
-  set pheromoneDepositRatio 60
+  set pheromoneDepositRatio 50
   set pheromoneAtFeedingSpots 60
   set PheromoneEvaporationRate 25
   set PheromoneDiffusionRate 90
   set AntsGoHungry true
   set PassivePheromoneDiscretion 0
   set CoverageRate 15
+  set AntStartingPosition "Spread Out"
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -512,7 +513,7 @@ FeedingSpots
 FeedingSpots
 0
 (WorldSize * WorldSize) / 1000
-10.0
+7.0
 1
 1
 spots
@@ -583,7 +584,7 @@ RotationAngle
 RotationAngle
 0
 180
-64.0
+45.0
 1
 1
 °
@@ -698,7 +699,7 @@ SWITCH
 378
 AutomaticPheromoneContrast
 AutomaticPheromoneContrast
-1
+0
 1
 -1000
 
@@ -711,7 +712,7 @@ PheromoneContrast
 PheromoneContrast
 1
 200
-126.0
+200.0
 1
 1
 %
@@ -872,7 +873,7 @@ PheromoneDepositRatio
 PheromoneDepositRatio
 0
 100
-49.0
+50.0
 1
 1
 %
@@ -885,9 +886,9 @@ SLIDER
 518
 PheromoneEvaporationRate
 PheromoneEvaporationRate
-0
+1
 100
-0.0
+25.0
 1
 1
 ticks
@@ -960,7 +961,7 @@ PheromoneAtFeedingSpots
 PheromoneAtFeedingSpots
 0
 100
-49.0
+60.0
 1
 1
 %
