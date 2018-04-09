@@ -1,7 +1,7 @@
 globals [ showPheromone showAnts showFood totalPheromone ] ; Self-Explanatory
 breed [ ants ant ] ; Ants
 breed [ foods food ] ; Food
-patches-own [ pheromone ]
+patches-own [ pheromone foodhere ]
 ants-own [ eaten ]
 
 ; Development purposes ONLY
@@ -34,6 +34,7 @@ to setup
     set color orange
     set size (feedingspotradius * 2)
     setxy random-xcor random-ycor
+    ask patches in-radius feedingspotradius [ set foodhere true ]
   ]
 
   repeat (count patches) [
@@ -72,7 +73,7 @@ to step
   ; Add pheromone at feedingspots
   if pheromoneAtFeedingSpots > 0 [
     ask foods [
-      ask patch-here [
+      ask patches in-radius feedingspotradius [
         set pheromone (pheromone + pheromoneMaxIntensity * (pheromoneAtFeedingSpots / 100))
       ]
     ]
@@ -124,15 +125,18 @@ to step
   ; Pheromone Dissapation/Evaporation
   set totalPheromone 0
   ask patches [
-    if pheromone > PheromoneMaxIntensity [ set pheromone PheromoneMaxIntensity ]
     set pheromone (pheromone * (1 - 1 / PheromoneEvaporationRate))
     if not (showPheromone = false) [ set pcolor scale-color PheromoneColor pheromone 0 (PheromoneMaxIntensity * (PheromoneContrast / 100)) ]
-    set totalPheromone (totalPheromone + pheromone)
+    if not (foodhere = true) [
+      if pheromone > PheromoneMaxIntensity [ set pheromone PheromoneMaxIntensity ]
+      set totalPheromone (totalPheromone + pheromone)
+    ]
   ]
 
   ; Update pheromone contrast
   if AutomaticPheromoneContrast [
-    set PheromoneContrast (precision ((totalPheromone - count foods * (PheromoneMaxIntensity * (PheromoneAtFeedingSpots / 100))) / 1000 * 0.75) 1)
+    set PheromoneContrast (precision (totalPheromone / 1000 * 2) 1)
+    ;set PheromoneContrast (precision ((totalPheromone - count foods * (PheromoneMaxIntensity * (PheromoneAtFeedingSpots / 100))) / 1000 * 0.75) 1)
     if PheromoneContrast < 1 [ set PheromoneContrast 1 ]
     if PheromoneContrast > 200 [ set PheromoneContrast 200 ]
   ]
@@ -473,7 +477,7 @@ FeedingSpotRadius
 FeedingSpotRadius
 0.5
 WorldSize / 10
-1.0
+2.0
 0.5
 1
 patches
@@ -516,7 +520,7 @@ SWITCH
 283
 AntsMayShareLocation
 AntsMayShareLocation
-1
+0
 1
 -1000
 
@@ -818,7 +822,7 @@ PheromoneDepositRatio
 PheromoneDepositRatio
 0
 100
-100.0
+10.0
 1
 1
 %
@@ -863,7 +867,7 @@ PheromoneMaxIntensity
 PheromoneMaxIntensity
 1
 100
-50.0
+100.0
 1
 1
 / patch
@@ -905,8 +909,8 @@ SLIDER
 PheromoneAtFeedingSpots
 PheromoneAtFeedingSpots
 0
-100
-100.0
+500
+500.0
 1
 1
 %
