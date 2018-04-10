@@ -29,20 +29,23 @@ to setup
   ; Clear all pheromone of the field
   clearPheromone
 
+  ; should be self explanatory
   create-foods feedingspots [
     set shape "circle"
     set color orange
     set size (feedingspotradius * 2)
     setxy random-xcor random-ycor
-    ; put food on feedingspots
+    ; put actual food on feedingspots
     ask patches in-radius feedingspotradius [ set foodhere true ]
   ]
 
+  ; populate the world with ants
   repeat (count patches) [
     let pxp (WorldSize / 2) ; Patch x preference. Default centre
     let pyp (WorldSize / 2) ; Patch y preference. Default centre
     let pap false ; Patch allow preference
     ask one-of patches [
+      ; according to the requirements, adding ants had to be a stochastic process
       if random 100 < coverageRate [
         if AntStartingPosition = "Spread Out" [
           set pxp pxcor
@@ -58,87 +61,33 @@ to setup
         set pap true
       ]
     ]
-    ; use boolean workaround because ants cannot be created within ask patches environment
+    ; using a boolean workaround because ants cannot be created within ask patches environment
     if pap = true [
       create-ants 1 [
-        set color red
-        set shape "bug"
+        set color red  ; ants default to hungry as shown with the color red
         set eaten 0
+        set shape "circle"
+        ; Using simple form to speed up computations.
+        ; Who is interested in ant-like shape while simulation a slimemold, anyway.
         setxy pxp pyp
         set blessed false
       ]
     ]
   ]
 
+  ; Without feedingspots, the ants will never develop even the faintest interesting behaviour.
+  ; Nobody is interested in blessed to be false under this condition
+  ; Ok, almost nobody (https://www.youtube.com/watch?v=z7VYVjR_nwE)
+  if (feedingspots = 0) [ ask ants [ set blessed true ] ]
+
   reset-ticks
 end
 
 to step
   ; Add pheromone at feedingspots
-  if pheromoneAtFeedingSpots > 0 [
-    ask foods [
-      ask patches in-radius feedingspotradius [
-        ; keep adding pheromone against diffusion
-        set pheromone (pheromone + pheromoneMaxIntensity * (pheromoneAtFeedingSpots / 100))
-      ]
-    ]
-  ]
-
-  ; Ant Behaviour
-  ask ants [
-    ; Eat from foodsource
-    if (count foods in-radius (FeedingSpotRadius + 0.5) > 0) [
-      set eaten AntsSatiatedTicks
-      set blessed true
-    ]
-
-    ; Change of death
-    if (random-float 100 < ChanceOfDeath) [
-      die
-    ]
-
-    ; Sense your surroundings
-    let sensedpheromone [ 0 0 ]
-    ; update with direction (at item 0) of highest amount of pheromone (at item 1):
-    ;   0 left
-    ;   1 forward
-    ;   2 right
-    ;   3 don't move
-    set sensedpheromone ant-sense
-    ; turn left if appropriate
-    if (item 0 sensedpheromone) = 0 [
-      left RotationAngle
-    ]
-    ; turn right if appropriate
-    if (item 0 sensedpheromone) = 2 [
-      right RotationAngle
-    ]
-    ; If possible, move in the direction the ant is now facing
-    if not ((item 0 sensedpheromone) = 3) [
-      forward AntStepSize
-    ]
-
-    ; Dump pheromone
-    if (blessed = true ) [
-    ifelse eaten > 0 [
-      if AntsGoHungry [
-        set eaten (eaten - 1)
-      ]
-      set color green
-      ask patch-here [
-        set pheromone (pheromone + (pheromoneMaxIntensity * (pheromoneDepositRatio / 100)))
-        if pheromone > pheromoneMaxIntensity [ set pheromone pheromoneMaxIntensity ]
-      ]
-    ] [
-      set color red
-      ask patch-here [
-        ; Passive pheromone discretion
-        set pheromone (pheromone + (pheromoneMaxIntensity * (passivePheromoneDiscretion / 100)))
-      ]
-    ]
-  ]
-  ]
-
+  addFoodAtSpots
+  ; control antbehaviour
+  controlAnts
   ; Diffuse pheromones
   diffuse pheromone (PheromoneDiffusionRate / 100)
 
@@ -163,6 +112,92 @@ to step
 
   ; Tick
   tick
+end
+
+to addFoodAtSpots
+    if (pheromoneAtFeedingSpots > 0) [
+    ask foods [
+      ask patches in-radius feedingspotradius [
+        ; keep adding pheromone against diffusion
+        set pheromone (pheromone + pheromoneMaxIntensity * (pheromoneAtFeedingSpots / 100))
+      ]
+    ]
+  ]
+end
+
+to controlAnts
+    ; Ant Behaviour
+  ask ants [
+    ; Eat from foodsource
+    letAntsEat
+
+    ; Change of death
+    dieMaybe
+
+    ; let ants move in response to sensing environment
+    antMotorControl
+
+    ; Dump pheromone
+    dumpPheromones
+  ]
+
+end
+
+to dumpPheromones
+      if (blessed = true ) [
+    ifelse eaten > 0 [
+      if AntsGoHungry [
+        set eaten (eaten - 1)
+      ]
+      set color green
+      ask patch-here [
+        set pheromone (pheromone + (pheromoneMaxIntensity * (pheromoneDepositRatio / 100)))
+        if pheromone > pheromoneMaxIntensity [ set pheromone pheromoneMaxIntensity ]
+      ]
+    ] [
+      set color red
+      ask patch-here [
+        ; Passive pheromone discretion
+        set pheromone (pheromone + (pheromoneMaxIntensity * (passivePheromoneDiscretion / 100)))
+      ]
+    ]
+  ]
+end
+
+to letAntsEat
+      if (count foods in-radius (FeedingSpotRadius + 0.5) > 0) [
+      set eaten AntsSatiatedTicks
+      set blessed true
+    ]
+end
+
+to dieMaybe
+     if (random-float 100 < ChanceOfDeath) [
+      die
+    ]
+end
+
+to antMotorControl
+      ; Sense your surroundings
+    let sensedpheromone [ 0 0 ]
+    ; update with direction (at item 0) of highest amount of pheromone (at item 1):
+    ;   0 left
+    ;   1 forward
+    ;   2 right
+    ;   3 don't move
+    set sensedpheromone ant-sense
+    ; turn left if appropriate
+    if (item 0 sensedpheromone) = 0 [
+      left RotationAngle
+    ]
+    ; turn right if appropriate
+    if (item 0 sensedpheromone) = 2 [
+      right RotationAngle
+    ]
+    ; If possible, move in the direction the ant is now facing
+    if not ((item 0 sensedpheromone) = 3) [
+      forward AntStepSize
+    ]
 end
 
 ; Ants be sensing
@@ -513,7 +548,7 @@ FeedingSpots
 FeedingSpots
 0
 (WorldSize * WorldSize) / 1000
-7.0
+8.0
 1
 1
 spots
@@ -598,8 +633,8 @@ SLIDER
 ChanceOfDeath
 ChanceOfDeath
 0
-0.01
-0.01
+0.05
+0.05
 0.001
 1
 %
@@ -771,7 +806,7 @@ BUTTON
 632
 430
 665
-Remove Ants
+Massacre Ants
 ModAnts (-1 * abs AntsToModify)
 NIL
 1
@@ -1133,7 +1168,7 @@ This switch allows enabling and disabling automatic control of the PheromoneCont
 The pheromone contrast slider controls (somewhat) how strongly the pheromone changes color based on the amount of pheromone on a patch. A higher percentage will create generally darker pheromone and a lower will generally increase the brightness.
 
 ### Toggle Pheromone Visiblity Button (P)
-As the name suggests, this button toggles wether or not the pheromone is visible. As with the other 'Toggle Visiblity' buttons, the pheromone is not disabled, only invisible. Disabling pheromone visiblity may slightly up performance, but strongly decrease interest.
+As the name suggests, this button toggles wether or not the pheromone is visible. As with the other 'Toggle Visiblity' buttons, the pheromone is not disabled, only invisible. Disabling pheromone visiblity may slightly up performance, but strongly decrease the fun of watching the simulation.
 
 ### PheromoneDepositRatio Slider
 This slider dictates the amount of pheromone a satiated ant dumps per tick. It is in percentages of the maximum intensity of pheromone per patch.
@@ -1185,10 +1220,10 @@ This slider toggles wether or not ants will go hungry again after a certain amou
 This slider dictates for how long ants will be satiated when the AntsGoHungry switch is turned on.
 
 ### ChanceOfDeath Slider
-This slider dictates - again, as the name suggest - the chance for an ant to die each tick. Note that it's minimum (0.01%) is probably high enough.
+This slider dictates - again, as the name suggest - the chance for an ant to die each tick. Note that even at fairly low rates the ants die swiftly, so the maximum chance is with 0.05 % still more than high enough. If you would want to kill huge amounts of ants, check the 'Playing For God' controls, more precisely 'Massacre Ants'
 
 ### PassivePheromoneDiscretion Slider
-This slider dictates how much an ant (hungry or satiated) will discrete by default each tick. It's defined in a percentage value over the maximum pheromone per patch. (Normally this is off: at 0%)
+This slider dictates how much an ant (hungry or satiated) will discrete by default each tick. It's defined in a percentage value over the maximum pheromone per patch. The paper of Jones (2011) suggests that this feature models the "flux of internal protoplasm". This slider generates self-organising network structures, even without food.
 
 ### Toggle Ant Visibility Button (T)
 This button toggles the showing of ants (original and new). Its actual influence on performance is minimal, however without all the crawling ants, it does *feel* somewhat smoother, and is much more pleasant to look at.
@@ -1212,9 +1247,9 @@ This input allows for setting the amount of ants to add or remove when pressing 
 ### Add Ants Button (A)
 This button allows for adding new ants to the world. The amount of ants added is dictated by the AntsToModify Input.
 
-### Remove Ants Button (D)
+### Massacre Ants Button (D)
 _[You monster!](https://www.youtube.com/watch?v=Yy3dIicSI_0)_  
-This buttons allows for removing ants from the world. The amount of ants added is dictated by the AntsToModify input, as long as it isn't over the current amount of alive ants (if it is, it will do that amount instead).
+This buttons allows for kill ants in humongous amounts. The amount of ants added is dictated by the AntsToModify input, as long as it isn't over the current amount of alive ants (if it is, it will do that amount instead).
 
 ### Total Ants Monitor
 This monitor shows the amount of alive ants currently in the world.
