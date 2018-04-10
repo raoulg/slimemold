@@ -66,7 +66,7 @@ to setup
       create-ants 1 [
         set color red  ; ants default to hungry as shown with the color red
         set eaten 0
-        set shape "circle"
+        set shape "bug"
         ; Using simple form to speed up computations.
         ; Who is interested in ant-like shape while simulation a slimemold, anyway.
         setxy pxp pyp
@@ -395,8 +395,8 @@ end
 GRAPHICS-WINDOW
 445
 25
-924
-505
+1056
+637
 -1
 -1
 3.0
@@ -410,9 +410,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-156
+200
 0
-156
+200
 1
 1
 1
@@ -438,7 +438,7 @@ WorldSize
 WorldSize
 20
 62 * (10 / patchSize)
-156.0
+200.0
 2
 1
 patches²
@@ -574,7 +574,7 @@ FeedingSpots
 FeedingSpots
 0
 (WorldSize * WorldSize) / 1000
-3.0
+10.0
 1
 1
 spots
@@ -589,7 +589,7 @@ FeedingSpotRadius
 FeedingSpotRadius
 0.5
 WorldSize / 10
-3.0
+2.0
 0.5
 1
 patches
@@ -773,7 +773,7 @@ PheromoneContrast
 PheromoneContrast
 1
 200
-15.3
+47.4
 1
 1
 %
@@ -967,7 +967,7 @@ PheromoneDiffusionRate
 90.0
 1
 1
-%
+% / tick
 HORIZONTAL
 
 SLIDER
@@ -1098,10 +1098,10 @@ ticks
 HORIZONTAL
 
 BUTTON
-10
-670
-205
-703
+5
+650
+210
+683
 AntsBeBlessed
 AntsBeBlessed
 NIL
@@ -1115,10 +1115,10 @@ NIL
 1
 
 BUTTON
-10
-715
-205
-748
+5
+685
+210
+718
 FindSteinerTrees
 FindSteinerTrees
 NIL
@@ -1141,6 +1141,7 @@ Extra features
 0.0
 1
 
+
 BUTTON
 330
 560
@@ -1156,6 +1157,15 @@ NIL
 ;
 NIL
 NIL
+
+TEXTBOX
+5
+620
+215
+638
+-----------------------------------------
+13
+5.0
 1
 
 @#$#@#$#@
