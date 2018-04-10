@@ -773,7 +773,7 @@ PheromoneContrast
 PheromoneContrast
 1
 200
-200.0
+15.3
 1
 1
 %
@@ -1312,7 +1312,7 @@ When activated, this button allows for drawing little puffs of pheromone in the 
 The requirements stated that ants can only dump pheromone after they have eaten.
 This button allows all ants to start dumping pheromone. Only relevant when ants are allowed to passively discrete pheromone, so this is set to 1%.
 
-### FindSteinerTrees Button (\)
+### FindSteinerTrees Button (\\)
 This sets the FeedingSpotRadius at 3 and pheromoneAtFeedingspots at 60%, because feedingspots should be big enough to attract attention. The pheromoneDepositRatio is set at 50, a little bit lower than the feedingspots as to make them slightly more attractive than the pheromone of the ants. Setting this too high makes the ants prefer their own routes over the food; setting this too low cripples the ability of the ants to communicate information about the foodspots. Evaporationrate is set at 90% ; to low makes the ants loose track of interesting trails. To high makes the tracks not flexible enough. AntsGoHungry is set true, so the ants need to keep finding food to keep a trial intact. Letting them go hungry again allows for the less-optimal (longer) connections to dissolve over connections that give a shorter road to food. PassivePheromoneDiscretion is set to 1; this simulates the intern dynamic of the 'fluid' and generates behaviour where the ants self-organise in networks. Set fairly low, to help the ants explore their environment and not settle premature into roads that provide food and ignore other foodspots that aren't discovered yet. CoverageRate is set at 15%, together with ChanceOfDeath at 0.01%; Setting CoverageRate high makes a dense field that gets thinner over time because the ants die slowly, letting the suboptimal connections fade out over time. AntsStartingPosition is set at "Spread Out"; this way the ants get in touch with all the foodspots and can collapse the superfluous connections over time.
 
 ## View
