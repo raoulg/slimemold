@@ -86,12 +86,22 @@ end
 to step
   ; Add pheromone at feedingspots
   addFoodAtSpots
+
   ; control antbehaviour
   controlAnts
-  ; Diffuse pheromones
-  diffuse pheromone (PheromoneDiffusionRate / 100)
 
-  ; Pheromone Dissapation/Evaporation
+  ; Pheromone Diffusion/Dissapation/Evaporation
+  pheromoneDynamics
+
+  ; Update pheromone contrast
+  controlPheromoneContrast
+
+  ; Tick
+  tick
+end
+
+to pheromoneDynamics
+  diffuse pheromone (PheromoneDiffusionRate / 100)
   set totalPheromone 0
   ask patches [
     set pheromone (pheromone * (1 - 1 / PheromoneEvaporationRate))
@@ -101,17 +111,14 @@ to step
       set totalPheromone (totalPheromone + pheromone)
     ]
   ]
+end
 
-  ; Update pheromone contrast
-  if AutomaticPheromoneContrast [
+to controlPheromoneContrast
+    if AutomaticPheromoneContrast [
     set PheromoneContrast (precision (totalPheromone / 1000 * 2) 1)
-    ;set PheromoneContrast (precision ((totalPheromone - count foods * (PheromoneMaxIntensity * (PheromoneAtFeedingSpots / 100))) / 1000 * 0.75) 1)
     if PheromoneContrast < 1 [ set PheromoneContrast 1 ]
     if PheromoneContrast > 200 [ set PheromoneContrast 200 ]
   ]
-
-  ; Tick
-  tick
 end
 
 to addFoodAtSpots
