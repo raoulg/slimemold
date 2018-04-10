@@ -1141,23 +1141,6 @@ Extra features
 0.0
 1
 
-
-BUTTON
-330
-560
-430
-593
-Clear & Hunger
-NIL
-NIL
-1
-T
-OBSERVER
-NIL
-;
-NIL
-NIL
-
 TEXTBOX
 5
 620
@@ -1167,6 +1150,23 @@ TEXTBOX
 13
 5.0
 1
+
+BUTTON
+330
+560
+430
+593
+Clear & Hunger
+ClearAndHunger
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+0
 
 @#$#@#$#@
 # Model
