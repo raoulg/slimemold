@@ -104,7 +104,8 @@ to pheromoneDynamics
   diffuse pheromone (PheromoneDiffusionRate / 100)
   set totalPheromone 0
   ask patches [
-    set pheromone (pheromone * (1 - 1 / PheromoneEvaporationRate))
+    ; The evaporationrate specifies how many ticks the pheromone takes to evaporate completely
+    set pheromone (pheromone * (PheromoneEvaporationRate / 100))
     if not (showPheromone = false) [ set pcolor scale-color PheromoneColor pheromone 0 (PheromoneMaxIntensity * (PheromoneContrast / 100)) ]
     if not (foodhere = true) [
       if pheromone > PheromoneMaxIntensity [ set pheromone PheromoneMaxIntensity ]
