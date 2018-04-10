@@ -101,14 +101,17 @@ to step
 end
 
 to pheromoneDynamics
-  diffuse pheromone (PheromoneDiffusionRate / 100)
+  diffuse pheromone (PheromoneDiffusionRate / 100 )
   set totalPheromone 0
   ask patches [
-    ; The evaporationrate specifies how many ticks the pheromone takes to evaporate completely
+    ; The evaporationrate specifies the percentage the pheromone evaporates every step
     set pheromone (pheromone * (PheromoneEvaporationRate / 100))
+    ; use scale-color to scale pheromone according to choosen base-color
     if not (showPheromone = false) [ set pcolor scale-color PheromoneColor pheromone 0 (PheromoneMaxIntensity * (PheromoneContrast / 100)) ]
+    ; correct pheromone not-on-foodspots back to max-value when exceeding
     if not (foodhere = true) [
       if pheromone > PheromoneMaxIntensity [ set pheromone PheromoneMaxIntensity ]
+      ; totalPheromone is used for automatic control of contrast
       set totalPheromone (totalPheromone + pheromone)
     ]
   ]
@@ -116,7 +119,8 @@ end
 
 to controlPheromoneContrast
     if AutomaticPheromoneContrast [
-    set PheromoneContrast (precision (totalPheromone / 1000 * 2) 1)
+    ; rules-of-thumb for automatic contrast regulation
+    set PheromoneContrast (precision (totalPheromone / 500) 1)
     if PheromoneContrast < 1 [ set PheromoneContrast 1 ]
     if PheromoneContrast > 200 [ set PheromoneContrast 200 ]
   ]
@@ -173,9 +177,9 @@ to dumpPheromones
 end
 
 to letAntsEat
-      if (count foods in-radius (FeedingSpotRadius + 0.5) > 0) [
-      set eaten AntsSatiatedTicks
-      set blessed true
+    if (count foods in-radius (FeedingSpotRadius + 0.5) > 0) [
+    set eaten AntsSatiatedTicks
+    set blessed true
     ]
 end
 
@@ -276,9 +280,17 @@ end
 
 ; Clear all pheromone from the world
 to ClearPheromone
-  ask patches [
-    set pheromone 0
-    if not (showPheromone = false) [ set pcolor scale-color PheromoneColor pheromone 0 (PheromoneMaxIntensity * (PheromoneContrast / 100)) ]
+  ask patches [ set pheromone 0 ]
+end
+
+to ClearAndHunger
+  ; reset all pheromone
+  ask patches [ set pheromone 0 ]
+  ; avoid ants recreating all pheromonepaths within a single tick
+  ask ants [
+    set eaten 0
+    set blessed false
+    set color red
   ]
 end
 
@@ -301,10 +313,13 @@ to ModAnts [ n ]
   ]
 end
 
-; Spread out the ants over the playfield
+; Spread out & reset all ants over the playfield
 to RedistributeAnts
   ask ants [
     setxy random-xcor random-ycor
+    set eaten 0
+    set blessed false
+    set color red
   ]
 end
 
@@ -359,6 +374,8 @@ end
 to AntsBeBlessed
   ask ants [
     set blessed true
+    ; only relevant when ants are allowd to passively discrete pheromone
+    set PassivePheromoneDiscretion 1
   ]
 end
 
@@ -366,19 +383,20 @@ to FindSteinerTrees
   set FeedingSpotRadius 3
   set pheromoneDepositRatio 50
   set pheromoneAtFeedingSpots 60
-  set PheromoneEvaporationRate 25
+  set PheromoneEvaporationRate 90
   set PheromoneDiffusionRate 90
   set AntsGoHungry true
-  set PassivePheromoneDiscretion 0
+  set PassivePheromoneDiscretion 1
   set CoverageRate 15
+  set ChanceOfDeath 0.01
   set AntStartingPosition "Spread Out"
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
 445
 25
-918
-499
+924
+505
 -1
 -1
 3.0
@@ -392,9 +410,9 @@ GRAPHICS-WINDOW
 1
 1
 0
-154
+156
 0
-154
+156
 1
 1
 1
@@ -420,7 +438,7 @@ WorldSize
 WorldSize
 20
 62 * (10 / patchSize)
-154.0
+156.0
 2
 1
 patches²
@@ -556,7 +574,7 @@ FeedingSpots
 FeedingSpots
 0
 (WorldSize * WorldSize) / 1000
-8.0
+3.0
 1
 1
 spots
@@ -642,7 +660,7 @@ ChanceOfDeath
 ChanceOfDeath
 0
 0.05
-0.05
+0.01
 0.001
 1
 %
@@ -697,7 +715,7 @@ BUTTON
 525
 430
 558
-Redistribute Ants & Clear Pheromone
+Redistribute & Clear
 RedistributeAnts\nClearPheromone
 NIL
 1
@@ -929,12 +947,12 @@ SLIDER
 518
 PheromoneEvaporationRate
 PheromoneEvaporationRate
-1
+0
 100
-25.0
+90.0
 1
 1
-ticks
+%
 HORIZONTAL
 
 SLIDER
@@ -949,7 +967,7 @@ PheromoneDiffusionRate
 90.0
 1
 1
-%/tick
+%
 HORIZONTAL
 
 SLIDER
@@ -1019,7 +1037,7 @@ PassivePheromoneDiscretion
 PassivePheromoneDiscretion
 0
 10
-0.0
+1.0
 0.1
 1
 %
@@ -1039,10 +1057,10 @@ totalPheromone
 BUTTON
 225
 560
-430
+325
 593
-Make All Ants Hungry
-ask ants [ set eaten 0 ]
+Go Hungry
+ask ants [ \nset eaten 0 \nset color red]
 NIL
 1
 T
@@ -1121,6 +1139,23 @@ TEXTBOX
 Extra features
 11
 0.0
+1
+
+BUTTON
+330
+560
+430
+593
+Clear & Hunger
+NIL
+NIL
+1
+T
+OBSERVER
+NIL
+;
+NIL
+NIL
 1
 
 @#$#@#$#@
@@ -1238,16 +1273,20 @@ This button toggles the showing of ants (original and new). Its actual influence
 
 ## Playing For God
 ### Redistribute Ants Button (R)
-This button will spread out all ants accross the world randomly when pressed.
+This button will spread out all ants accross the world randomly when pressed. It will also reset the properties of the ants, like having eaten or being blessed.
 
 ### Clear Pheromone Button (C)
-This button will clear all pheromone from the world when pressed.
+This button will clear all pheromone from the world when pressed. Uninteresting in almost all scenarios, because when eaten & blessed status of ants is not cleared as well, ants will lay out the previous pheromon pattern almost immediately. We kept this feature anyway, because there might be some scenario's we missed (and the requirements could be interpreted as stating exactly this behaviour as a feature).
 
-### Redistrube Ants & Clear Pheromone Button (&)
-This button - as the name suggests - will spread out all the ants over the world randomly and clear all pheromone from the world, when pressed.
+### Redistrube & Clear Button (&)
+This button - as the name suggests - will redistribute all the ants over the world randomly and clear all pheromone from the world, when pressed.
 
-### Make All Ants Hungry Button (H)
+### Go Hungry Button (H)
 This button will set all ants to their default 'hungry' state, in which they don't discrete any pheromone.
+
+### Clear & Hunger (;)
+As mentioned above, simply clearing pheromone is not very interesting.
+This button adds reseting the status of the ants and gives more interesting behaviour. As opposed to setup, it keeps things like current distribution of ants and location of foodspots intact.
 
 ### AntsToModify Input
 This input allows for setting the amount of ants to add or remove when pressing the Add Ants (A) and Remove Ants (D) buttons.
@@ -1267,6 +1306,14 @@ This monitor shows the total maount of pheromone currently in the world.
 
 ### Draw Pheromone Button (M)
 When activated, this button allows for drawing little puffs of pheromone in the world by clicking (and dragging).
+
+## Extras
+### AntsBeBlessed Button (B)
+The requirements stated that ants can only dump pheromone after they have eaten.
+This button allows all ants to start dumping pheromone. Only relevant when ants are allowed to passively discrete pheromone, so this is set to 1%.
+
+### FindSteinerTrees Button (\)
+This sets the FeedingSpotRadius at 3 and pheromoneAtFeedingspots at 60%, because feedingspots should be big enough to attract attention. The pheromoneDepositRatio is set at 50, a little bit lower than the feedingspots as to make them slightly more attractive than the pheromone of the ants. Setting this too high makes the ants prefer their own routes over the food; setting this too low cripples the ability of the ants to communicate information about the foodspots. Evaporationrate is set at 90% ; to low makes the ants loose track of interesting trails. To high makes the tracks not flexible enough. AntsGoHungry is set true, so the ants need to keep finding food to keep a trial intact. Letting them go hungry again allows for the less-optimal (longer) connections to dissolve over connections that give a shorter road to food. PassivePheromoneDiscretion is set to 1; this simulates the intern dynamic of the 'fluid' and generates behaviour where the ants self-organise in networks. Set fairly low, to help the ants explore their environment and not settle premature into roads that provide food and ignore other foodspots that aren't discovered yet. CoverageRate is set at 15%, together with ChanceOfDeath at 0.01%; Setting CoverageRate high makes a dense field that gets thinner over time because the ants die slowly, letting the suboptimal connections fade out over time. AntsStartingPosition is set at "Spread Out"; this way the ants get in touch with all the foodspots and can collapse the superfluous connections over time.
 
 ## View
 Exists solely of the view showing the described world/simulation.
